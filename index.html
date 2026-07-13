@@ -120,8 +120,19 @@
 
   /* ---- two-column log layout ---- */
   .log-grid{display:grid;grid-template-columns:340px 1fr;gap:14px;align-items:start}
-  @media(max-width:760px){ .log-grid{grid-template-columns:1fr} }
+  @media(max-width:760px){
+    .log-grid{grid-template-columns:1fr}
+    .picker-list{max-height:40vh}
+    #guidePickerList,#rePickerList{max-height:40vh}
+  }
 
+  /* compact search + filters toggle */
+  .search-row{display:flex;gap:8px;margin-top:10px;align-items:stretch}
+  .search-wrap{position:relative;flex:1}
+  .search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted);pointer-events:none}
+  .search-wrap input{padding:8px 10px 8px 32px;font-size:14px}
+  #logFiltersBtn{flex:0 0 auto}
+  #logFiltersBtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
   /* ---- filter chips ---- */
   .fgroup{margin-top:12px}
   .fgroup .flabel{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px}
@@ -248,12 +259,20 @@
           <h2 style="margin:0">Exercises <span class="count-badge" id="libCount"></span></h2>
           <span class="chip-clear" id="clearAll" onclick="clearFilters()">reset</span>
         </div>
-        <input id="exSearch" type="text" placeholder="Search…" oninput="renderPicker()" style="margin-top:10px">
-        <div class="chips" style="margin-top:10px">
-          <span class="chip fav" id="favChip" onclick="toggleFavFilter()">★ Favorites <span id="favCount"></span></span>
-          <span class="chip logged" id="loggedChip" onclick="toggleLoggedFilter()">◷ Logged <span id="loggedCount"></span></span>
+        <div class="search-row">
+          <div class="search-wrap">
+            <svg class="search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+            <input id="exSearch" type="text" placeholder="Search exercises…" oninput="renderPicker()">
+          </div>
+          <button class="btn-mini" id="logFiltersBtn" onclick="toggleLogFilters()">Filters</button>
         </div>
-        <div id="filterGroups"></div>
+        <div id="logFilters">
+          <div class="chips" style="margin-top:10px">
+            <span class="chip fav" id="favChip" onclick="toggleFavFilter()">★ Favorites <span id="favCount"></span></span>
+            <span class="chip logged" id="loggedChip" onclick="toggleLoggedFilter()">◷ Logged <span id="loggedCount"></span></span>
+          </div>
+          <div id="filterGroups"></div>
+        </div>
         <div class="loadbar" id="loadbar">Loading exercise database…</div>
         <div class="picker-list" id="pickerList"></div>
       </div>
@@ -270,7 +289,7 @@
           <div id="routinePlan"></div>
         </div>
 
-        <div class="card" id="chosenCard">
+        <div class="card" id="chosenCard" style="scroll-margin-top:58px">
           <div class="placeholder" id="chosenBox">← Pick an exercise from the list to start logging.</div>
         </div>
 
@@ -508,7 +527,7 @@ function toggleFav(idx, ev){
   saveFavs(); updateFavChip(); renderPicker();
   if(chosen===name) refreshChosenStar();
 }
-function toggleFavFilter(){ favOnly=!favOnly; updateFavChip(); renderPicker(); }
+function toggleFavFilter(){ favOnly=!favOnly; updateFavChip(); updateLogFiltersBtn(); renderPicker(); }
 function updateFavChip(){
   const chip=document.getElementById("favChip");
   if(chip) chip.classList.toggle("on", favOnly);
@@ -516,10 +535,29 @@ function updateFavChip(){
   if(c) c.textContent = favs.size ? `(${favs.size})` : "";
 }
 
+// ---- collapsible Log filters ----
+function toggleLogFilters(){
+  const f=document.getElementById("logFilters");
+  const open=f.classList.toggle("hidden")===false;
+  document.getElementById("logFiltersBtn").classList.toggle("on", open);
+}
+function activeFilterCount(){
+  let n=0;
+  if(favOnly) n++; if(loggedOnly) n++;
+  if(filters.m) n++; if(filters.eq) n++; if(filters.cat) n++;
+  return n;
+}
+function updateLogFiltersBtn(){
+  const btn=document.getElementById("logFiltersBtn"); if(!btn) return;
+  const n=activeFilterCount();
+  btn.textContent = n ? `Filters (${n})` : "Filters";
+}
+function isMobile(){ return window.matchMedia("(max-width:760px)").matches; }
+
 // ---- logged filter ----
 let loggedOnly = false;
 function loggedNames(){ return new Set(data.map(d=>d.exercise)); }
-function toggleLoggedFilter(){ loggedOnly=!loggedOnly; updateLoggedChip(); renderPicker(); }
+function toggleLoggedFilter(){ loggedOnly=!loggedOnly; updateLoggedChip(); updateLogFiltersBtn(); renderPicker(); }
 function updateLoggedChip(){
   const chip=document.getElementById("loggedChip");
   if(chip) chip.classList.toggle("on", loggedOnly);
@@ -661,13 +699,14 @@ function libEquip(){ return [...new Set(LIB.map(e=>e.eq).filter(Boolean))].sort(
 function libCats(){ return [...new Set(LIB.map(e=>e.cat).filter(Boolean))].sort(); }
 function toggleFilter(key,val){
   filters[key] = (filters[key]===val) ? "" : val;
-  syncChips();
+  syncChips(); updateLogFiltersBtn();
   renderPicker();
 }
 function clearFilters(){
   filters.m=filters.eq=filters.cat="";
+  favOnly=false; loggedOnly=false;
   document.getElementById("exSearch").value="";
-  syncChips(); renderPicker();
+  syncChips(); updateFavChip(); updateLoggedChip(); updateLogFiltersBtn(); renderPicker();
 }
 function syncChips(){
   document.querySelectorAll("#filterGroups .chip").forEach(c=>{
@@ -767,7 +806,12 @@ function chooseEx(idx){
   } else {
     wIn.value=""; rIn.value="";
   }
-  wIn.focus(); wIn.select();
+  if(isMobile()){
+    // jump straight to the selected exercise + log inputs
+    document.getElementById("chosenCard").scrollIntoView({behavior:"smooth", block:"start"});
+  } else {
+    wIn.focus(); wIn.select();
+  }
 }
 
 // ---- +/- steppers ----
@@ -1303,7 +1347,7 @@ function selectRoutine(id){
 function renderRoutinePlan(){
   const host=document.getElementById("routinePlan"); if(!host) return;
   const r=getRoutine(activeRoutineId);
-  if(!r){ host.innerHTML='<div class="muted" style="margin-top:8px">No routine selected. Pick one, or create routines in the Routines tab.</div>'; return; }
+  if(!r){ host.innerHTML=""; return; }   // keep the card compact when nothing is selected
   if(r.exercises.length===0){ host.innerHTML='<div class="muted" style="margin-top:8px">This routine has no exercises yet.</div>'; return; }
   const today=todayStr();
   const doneSet=new Set(data.filter(d=>d.date===today).map(d=>d.exercise));
@@ -1575,6 +1619,9 @@ function importBackup(file){
 
 // ================= Init =================
 document.getElementById("paDate").value = todayStr();
+// collapse the Log filters by default on small screens
+if(isMobile()) document.getElementById("logFilters").classList.add("hidden");
+updateLogFiltersBtn();
 renderSession();
 refreshRoutineSelect();
 renderRoutinePlan();
