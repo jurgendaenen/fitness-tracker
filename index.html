@@ -48,7 +48,7 @@
   .rbtn:hover{border-color:var(--accent)}
   .rbtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
   .lopt{color:var(--muted);font-weight:400;font-size:11px}
-  .amt-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+  .amt-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;min-height:28px}
   .modeseg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
   .modeseg button{background:var(--card2);color:var(--muted);border:none;padding:4px 10px;font-size:11px;font-weight:600;border-radius:0}
   .modeseg button.on{background:var(--accent);color:#fff}
@@ -277,7 +277,8 @@
         <div class="card">
           <h2>Log a set</h2>
           <div class="row">
-            <div><label>Weight (kg) <span class="lopt">optional</span></label>
+            <div>
+              <div class="amt-head"><label style="margin:0">Weight (kg) <span class="lopt">optional</span></label></div>
               <div class="stepper">
                 <button type="button" onclick="bump('weight',-2.5)">−</button>
                 <input id="weight" type="number" inputmode="decimal" placeholder="—" step="0.5">
