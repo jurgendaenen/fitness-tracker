@@ -82,6 +82,7 @@
   .hidden{display:none}
   .hist-day{border-left:2px solid var(--accent);padding:2px 0 2px 12px;margin:14px 0}
   .hd-row{display:flex;align-items:center;gap:8px}
+  .hist-day .chev{cursor:pointer;color:var(--muted);font-size:12px;width:12px;display:inline-block;user-select:none}
   .hist-day .date{font-weight:700;font-size:14px}
   .hist-day .edit-date{cursor:pointer;color:var(--muted);font-size:13px}
   .hist-day .edit-date:hover{color:var(--accent)}
@@ -882,8 +883,10 @@ function renderSession(){
   if(items.length===0){ body.innerHTML='<div class="empty">No sets logged yet today.</div>'; return; }
   const groups={};
   items.forEach(it=>{(groups[it.exercise]=groups[it.exercise]||[]).push(it);});
+  // most recently logged exercise first
+  const order=Object.keys(groups).sort((a,b)=>Math.max(...groups[b].map(x=>x.i))-Math.max(...groups[a].map(x=>x.i)));
   let html="";
-  for(const ex in groups){
+  for(const ex of order){
     html+=`<div style="margin-top:6px;font-weight:600;font-size:14px">${ex}</div>`;
     groups[ex].forEach((it,n)=>{
       const extra = isTimed(it) ? "" : `<span class="muted">· ${((it.weight||0)*it.reps).toFixed(0)} vol</span>`;
@@ -902,6 +905,8 @@ function renderSession(){
 // ================= History (editable) =================
 let editingIdx=null;    // global data index whose weight/reps is being edited
 let editingDate=null;   // date string whose date is being edited
+let histCollapsed=null; // Set of collapsed session dates (null until first render)
+function toggleDay(dt){ if(histCollapsed.has(dt)) histCollapsed.delete(dt); else histCollapsed.add(dt); renderHistory(); }
 
 // muscle lookup from the exercise DB
 function musclesOf(name){ const e=LIB.find(x=>x.n===name); return e?e.m:[]; }
@@ -918,17 +923,20 @@ function renderHistory(){
   const byDate={};
   items.forEach(d=>{(byDate[d.date]=byDate[d.date]||[]).push(d);});
   const dates=Object.keys(byDate).sort().reverse();
+  if(histCollapsed===null) histCollapsed=new Set(dates.slice(1)); // most recent open, rest collapsed
   let html="";
   dates.forEach(dt=>{
     const dayItems=byDate[dt];
     const g={};
     dayItems.forEach(d=>{(g[d.exercise]=g[d.exercise]||[]).push(d);});
+    const collapsed = dt!==editingDate && histCollapsed.has(dt);
     // header + editable date
     const hdr = dt===editingDate
       ? `<div class="date-edit"><input id="edDate" type="date" value="${dt}">
            <button class="save" onclick="saveDate('${dt}')">Move</button>
            <span class="hd" onclick="cancelDateEdit()">×</span></div>`
-      : `<div class="hd-row"><span class="date">${fmtDate(dt)}</span>
+      : `<div class="hd-row"><span class="chev" onclick="toggleDay('${dt}')">${collapsed?'▸':'▾'}</span>
+           <span class="date" onclick="toggleDay('${dt}')" style="cursor:pointer">${fmtDate(dt)}</span>
            <span class="edit-date" onclick="editDate('${dt}')" title="Change date">✎ date</span></div>`;
     // per-session summary
     const t=dayTotals(dayItems);
@@ -938,10 +946,12 @@ function renderHistory(){
     const musc=[...new Set(dayItems.flatMap(d=>musclesOf(d.exercise)))].map(capit);
     const muscTxt=musc.length?` · <span class="muscles">${musc.join(", ")}</span>`:"";
     html+=`<div class="hist-day">${hdr}
-      <div class="day-summary">${parts.join(" · ")}${muscTxt}</div>`;
-    for(const ex in g){
-      const sets=g[ex].map(s=>histSet(s)).join("");
-      html+=`<div class="hist-ex"><b>${ex}</b><div>${sets}</div></div>`;
+      <div class="day-summary" onclick="${collapsed?`toggleDay('${dt}')`:''}" style="${collapsed?'cursor:pointer':''}">${parts.join(" · ")}${muscTxt}</div>`;
+    if(!collapsed){
+      for(const ex in g){
+        const sets=g[ex].map(s=>histSet(s)).join("");
+        html+=`<div class="hist-ex"><b>${ex}</b><div>${sets}</div></div>`;
+      }
     }
     html+=`</div>`;
   });
