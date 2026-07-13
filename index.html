@@ -81,10 +81,15 @@
   .tabs button svg{width:22px;height:22px}
   .hidden{display:none}
   .hist-day{border-left:2px solid var(--accent);padding:2px 0 2px 12px;margin:14px 0}
-  .hd-row{display:flex;align-items:center;gap:8px}
-  .hist-day .chev{cursor:pointer;color:var(--muted);font-size:12px;width:12px;display:inline-block;user-select:none}
-  .hist-day .date{font-weight:700;font-size:14px}
-  .hist-day .edit-date{cursor:pointer;color:var(--muted);font-size:13px}
+  .hd-row{display:flex;align-items:center;gap:6px}
+  .hist-day .day-toggle{display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;user-select:none;
+    padding:7px 10px;margin-left:-10px;border-radius:10px;transition:background .12s}
+  .hist-day .day-toggle:hover,.hist-day .day-toggle:active{background:rgba(255,255,255,.06)}
+  .hist-day .chev{color:var(--accent);font-size:16px;width:18px;text-align:center;
+    display:inline-block;user-select:none;transition:transform .15s}
+  .hist-day .chev.open{transform:rotate(90deg)}
+  .hist-day .date{font-weight:700;font-size:15px}
+  .hist-day .edit-date{cursor:pointer;color:var(--muted);font-size:13px;padding:4px 6px}
   .hist-day .edit-date:hover{color:var(--accent)}
   .day-summary{font-size:12px;color:var(--muted);margin-top:3px}
   .day-summary .muscles{color:var(--accent2)}
@@ -935,8 +940,9 @@ function renderHistory(){
       ? `<div class="date-edit"><input id="edDate" type="date" value="${dt}">
            <button class="save" onclick="saveDate('${dt}')">Move</button>
            <span class="hd" onclick="cancelDateEdit()">×</span></div>`
-      : `<div class="hd-row"><span class="chev" onclick="toggleDay('${dt}')">${collapsed?'▸':'▾'}</span>
-           <span class="date" onclick="toggleDay('${dt}')" style="cursor:pointer">${fmtDate(dt)}</span>
+      : `<div class="hd-row"><div class="day-toggle" onclick="toggleDay('${dt}')">
+             <span class="chev${collapsed?'':' open'}">▸</span>
+             <span class="date">${fmtDate(dt)}</span></div>
            <span class="edit-date" onclick="editDate('${dt}')" title="Change date">✎ date</span></div>`;
     // per-session summary
     const t=dayTotals(dayItems);
