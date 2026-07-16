@@ -97,9 +97,9 @@
   .date-edit input{width:auto;font-size:13px;padding:5px 8px}
   .date-edit .save{background:var(--accent2);color:#052e14;padding:5px 9px;font-size:12px;border-radius:8px}
   /* heatmap */
-  .hm-scroll{overflow-x:auto;padding-bottom:6px}
-  .hm-grid{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,12px);gap:3px;width:max-content}
-  .hm-cell{width:12px;height:12px;border-radius:3px;background:var(--card2);border:1px solid #2a323d}
+  .hm-scroll{padding-bottom:2px}
+  .hm-grid{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,1fr);gap:2px;width:100%}
+  .hm-cell{aspect-ratio:1;border-radius:2px;background:var(--card2);border:1px solid #2a323d}
   .hm-cell.on{background:var(--accent2);border-color:var(--accent2)}
   .hm-months{display:flex;gap:3px;font-size:10px;color:var(--muted);margin-bottom:4px;width:max-content}
   .hm-legend{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:8px}
@@ -216,6 +216,25 @@
   .plan-row .pnm{font-size:14px;font-weight:600}
   .plan-row.done .pnm{text-decoration:line-through}
   .plan-progress{font-size:12px;color:var(--muted);margin:4px 0 0}
+  .plan-group{margin-top:12px}
+  .plan-ghd{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--muted);display:flex;align-items:center;gap:8px}
+  .plan-gcount{font-weight:600;letter-spacing:0;text-transform:none}
+  /* log-tab routine multi-select */
+  .rs-wrap{position:relative}
+  .rs-btn{background:var(--card2);border:1px solid var(--line);color:var(--text);font-size:13px;
+    padding:8px 12px;border-radius:8px;cursor:pointer;max-width:200px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .rs-btn:hover{border-color:var(--accent)}
+  .rs-panel{display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:30;
+    background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;
+    min-width:180px;max-height:260px;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .rs-panel.open{display:block}
+  .rs-opt{display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;font-size:14px;
+    cursor:pointer;color:var(--text)}
+  .rs-opt:hover{background:var(--card2)}
+  .rs-opt input{width:auto;margin:0;accent-color:var(--accent)}
+  .rs-empty{padding:10px;color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
@@ -288,9 +307,10 @@
         <div class="card" style="margin-top:14px" id="routineCard">
           <div class="chosen-hd">
             <h2 style="margin:0">Today's routine</h2>
-            <select id="routineSelect" onchange="selectRoutine(this.value)" style="width:auto;max-width:200px;font-size:13px;padding:8px">
-              <option value="">None</option>
-            </select>
+            <div class="rs-wrap">
+              <button type="button" id="routineSelectBtn" class="rs-btn" onclick="toggleRoutineDropdown(event)">None ▾</button>
+              <div id="routineSelectPanel" class="rs-panel"></div>
+            </div>
           </div>
           <div id="routinePlan"></div>
         </div>
@@ -376,22 +396,41 @@
   <div id="tab-progress" class="hidden">
     <div class="card">
       <h2>Progress</h2>
-      <input id="progSearch" type="text" placeholder="Search your exercises…" oninput="progSearch=this.value;refreshProgOptions()">
-      <div class="chips" style="margin-top:10px">
-        <span class="chip fav" id="progFavChip" onclick="toggleProgFav()">★ Favorites</span>
+      <div class="prange" id="progViewToggle" style="margin-top:4px">
+        <button class="rbtn on" data-v="exercise" onclick="setProgView('exercise')">By exercise</button>
+        <button class="rbtn" data-v="muscle" onclick="setProgView('muscle')">Muscle load</button>
       </div>
-      <div id="progFilterGroups"></div>
-      <label style="margin-top:12px">Exercise</label>
-      <select id="progSelect" onchange="renderProgress()"></select>
-      <div id="prBox" style="margin-top:12px"></div>
-      <div class="prange" id="prange">
-        <button class="rbtn" data-r="90" onclick="setProgRange(90)">3M</button>
-        <button class="rbtn" data-r="180" onclick="setProgRange(180)">6M</button>
-        <button class="rbtn" data-r="365" onclick="setProgRange(365)">1Y</button>
-        <button class="rbtn on" data-r="0" onclick="setProgRange(0)">All</button>
+
+      <div id="progExerciseView">
+        <input id="progSearch" type="text" placeholder="Search your exercises…" oninput="progSearch=this.value;refreshProgOptions()">
+        <div class="chips" style="margin-top:10px">
+          <span class="chip fav" id="progFavChip" onclick="toggleProgFav()">★ Favorites</span>
+        </div>
+        <div id="progFilterGroups"></div>
+        <label style="margin-top:12px">Exercise</label>
+        <select id="progSelect" onchange="renderProgress()"></select>
+        <div id="prBox" style="margin-top:12px"></div>
+        <div class="prange" id="prange">
+          <button class="rbtn" data-r="90" onclick="setProgRange(90)">3M</button>
+          <button class="rbtn" data-r="180" onclick="setProgRange(180)">6M</button>
+          <button class="rbtn" data-r="365" onclick="setProgRange(365)">1Y</button>
+          <button class="rbtn on" data-r="0" onclick="setProgRange(0)">All</button>
+        </div>
+        <canvas id="chart" height="200"></canvas>
+        <div id="progStats" style="margin-top:14px"></div>
       </div>
-      <canvas id="chart" height="200"></canvas>
-      <div id="progStats" style="margin-top:14px"></div>
+
+      <div id="progMuscleView" class="hidden">
+        <p class="muted" style="margin:12px 0 0">Weekly training load (weight × reps) per muscle group. Bodyweight & timed exercises aren't counted.</p>
+        <div class="prange" id="mrange">
+          <button class="rbtn" data-r="90" onclick="setMLoadRange(90)">3M</button>
+          <button class="rbtn" data-r="180" onclick="setMLoadRange(180)">6M</button>
+          <button class="rbtn on" data-r="365" onclick="setMLoadRange(365)">1Y</button>
+          <button class="rbtn" data-r="0" onclick="setMLoadRange(0)">All</button>
+        </div>
+        <canvas id="muscleChart" height="200"></canvas>
+        <div id="muscleStats" style="margin-top:14px"></div>
+      </div>
     </div>
   </div>
 
@@ -670,7 +709,9 @@ function onDBReady(){
   updateLoggedChip();
   renderPicker();
   // if the progress tab is showing, refresh its filtered options now that chips exist
-  if(!document.getElementById("tab-progress").classList.contains("hidden")) refreshProgOptions();
+  if(!document.getElementById("tab-progress").classList.contains("hidden")){
+    if(progView==='muscle') renderMuscleLoad(); else refreshProgOptions();
+  }
   // fill the past-entry exercise datalist
   const dl=document.getElementById("paExList");
   if(dl) dl.innerHTML=LIB.map(e=>`<option value="${e.n.replace(/"/g,'&quot;')}">`).join("");
@@ -1026,16 +1067,18 @@ function renderHeatmap(){
   const start=new Date(today);
   start.setDate(start.getDate()-364);
   const sDay=(start.getDay()+6)%7; start.setDate(start.getDate()-sDay);
-  let cells="", trainedCount=0;
+  let cells="", trainedCount=0, cellCount=0;
   const cur=new Date(start);
   while(cur<=today){
     const key=ymd(cur);
     const on=trained.has(key);
     if(on) trainedCount++;
+    cellCount++;
     cells+=`<div class="hm-cell ${on?'on':''}" title="${fmtDate(key)}${on?' · trained':''}"></div>`;
     cur.setDate(cur.getDate()+1);
   }
-  wrap.innerHTML=`<div class="hm-scroll"><div class="hm-grid">${cells}</div></div>
+  const weeks=Math.ceil(cellCount/7);
+  wrap.innerHTML=`<div class="hm-scroll"><div class="hm-grid" style="grid-template-columns:repeat(${weeks},1fr)">${cells}</div></div>
     <div class="hm-legend"><span>${trainedCount} training days in the last year</span>
       <span style="margin-left:auto">Not trained <span class="box"></span> <span class="box on"></span> Trained</span></div>`;
 }
@@ -1231,12 +1274,94 @@ function renderProgress(){
 function fmtShort(s){ const d=new Date(s+"T00:00:00");
   return d.toLocaleDateString(undefined,{month:'short',day:'numeric'}); }
 
+// ---- Progress: weekly load by muscle group ----
+let progView='exercise';
+function setProgView(v){
+  progView=v;
+  document.getElementById("progExerciseView").classList.toggle("hidden", v!=='exercise');
+  document.getElementById("progMuscleView").classList.toggle("hidden", v!=='muscle');
+  document.querySelectorAll("#progViewToggle .rbtn").forEach(b=>b.classList.toggle("on", b.dataset.v===v));
+  if(v==='muscle') renderMuscleLoad(); else renderProgress();
+}
+// map the fine-grained DB muscles into 6 broad groups
+const MG_MAP={chest:'Chest',
+  lats:'Back','middle back':'Back','lower back':'Back',traps:'Back',neck:'Back',
+  quadriceps:'Legs',hamstrings:'Legs',glutes:'Legs',calves:'Legs',abductors:'Legs',adductors:'Legs',
+  shoulders:'Shoulders',
+  biceps:'Arms',triceps:'Arms',forearms:'Arms',
+  abdominals:'Core'};
+const MG_ORDER=['Chest','Back','Legs','Shoulders','Arms','Core'];
+const MG_COLOR={Chest:'#ef4444',Back:'#3b82f6',Legs:'#22c55e',Shoulders:'#f59e0b',Arms:'#a855f7',Core:'#14b8a6'};
+function musGroupsOf(name){ const set=new Set();
+  musclesOf(name).forEach(x=>{ const g=MG_MAP[String(x).toLowerCase()]; if(g) set.add(g); });
+  return [...set];
+}
+function weekStart(s){ const d=new Date(s+"T00:00:00");
+  d.setDate(d.getDate()-((d.getDay()+6)%7)); return ymd(d); }
+let mLoadRange=365;   // days; 0 = all time
+function setMLoadRange(days){
+  mLoadRange=days;
+  document.querySelectorAll("#mrange .rbtn").forEach(b=>b.classList.toggle("on", +b.dataset.r===days));
+  renderMuscleLoad();
+}
+let muscleChart=null;
+function renderMuscleLoad(){
+  const stats=document.getElementById("muscleStats");
+  if(!stats) return;
+  const note='Load = weight × reps, so bodyweight & timed sets aren\'t counted here.';
+  let rows=data.filter(d=>(d.weight||0)>0 && d.reps>0);
+  if(mLoadRange>0){ const c=new Date(); c.setHours(0,0,0,0); c.setDate(c.getDate()-mLoadRange);
+    const cutoff=ymd(c); rows=rows.filter(r=>r.date>=cutoff); }
+  if(rows.length===0){ if(muscleChart)muscleChart.destroy();
+    stats.innerHTML=`<div class="empty">No weighted sets in this range. ${note}</div>`; return; }
+  // week -> group -> total load
+  const weeks={}, groupTotals={};
+  rows.forEach(r=>{
+    const groups=musGroupsOf(r.exercise); if(groups.length===0) return;
+    const wk=weekStart(r.date), load=(r.weight||0)*r.reps;
+    const bucket=weeks[wk]=weeks[wk]||{};
+    groups.forEach(g=>{ bucket[g]=(bucket[g]||0)+load; groupTotals[g]=(groupTotals[g]||0)+load; });
+  });
+  const wkKeys=Object.keys(weeks).sort();
+  if(wkKeys.length===0){ if(muscleChart)muscleChart.destroy();
+    stats.innerHTML=`<div class="empty">These sets aren't mapped to a muscle group yet.</div>`; return; }
+  const useTime=!window.__noTimeAxis;
+  const present=MG_ORDER.filter(g=>groupTotals[g]);
+  const datasets=present.map(g=>{
+    const arr=wkKeys.map(w=>Math.round(weeks[w][g]||0));
+    return {label:g, data: useTime?wkKeys.map((w,i)=>({x:w,y:arr[i]})):arr,
+      borderColor:MG_COLOR[g], backgroundColor:MG_COLOR[g]+'33', tension:.25, fill:false, spanGaps:true, pointRadius:2};
+  });
+  const ctx=document.getElementById("muscleChart");
+  if(muscleChart)muscleChart.destroy();
+  const xScale = useTime
+    ? {type:'time', time:{unit:'week', tooltipFormat:'MMM d, yyyy',
+         displayFormats:{week:'MMM d', month:'MMM yyyy'}},
+       ticks:{color:'#8b98a5',font:{size:10},maxRotation:0,autoSkip:true},grid:{color:'#2e3844'}}
+    : {ticks:{color:'#8b98a5',font:{size:10}},grid:{color:'#2e3844'}};
+  muscleChart=new Chart(ctx,{type:'line',
+    data:Object.assign(useTime?{}:{labels:wkKeys.map(fmtShort)},{datasets}),
+    options:{responsive:true,parsing: useTime?undefined:true,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{color:'#e6edf3',usePointStyle:true,boxWidth:28,font:{size:12},
+        generateLabels:(c)=>c.data.datasets.map((ds,i)=>({
+          text:ds.label, fontColor:'#e6edf3', strokeStyle:ds.borderColor, fillStyle:ds.borderColor,
+          lineWidth:2, pointStyle:'line',
+          hidden:!c.isDatasetVisible(i), datasetIndex:i }))}}},
+      scales:{x:xScale, y:{beginAtZero:true,ticks:{color:'#8b98a5'},grid:{color:'#2e3844'},
+        title:{display:true,text:'Load (kg)',color:'#8b98a5',font:{size:11}}}}}});
+  const grand=Object.values(groupTotals).reduce((s,v)=>s+v,0);
+  stats.innerHTML=present.map(g=>`<div class="stat"><span>${g}</span><b>${Math.round(groupTotals[g]).toLocaleString()} kg</b></div>`).join("")
+    +`<div class="stat"><span>Total load</span><b>${Math.round(grand).toLocaleString()} kg</b></div>`;
+}
+
 // date key helper (used by the activity heatmap)
 function ymd(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
 // ================= Routines =================
 let routines = (()=>{ try{return JSON.parse(localStorage.getItem(ROUTINES_KEY))||[]}catch(e){return[]} })();
-let activeRoutineId = localStorage.getItem(ACTIVE_ROUTINE_KEY) || "";
+function parseActiveIds(s){ return (s||"").split(",").map(x=>x.trim()).filter(Boolean); }
+let activeRoutineIds = parseActiveIds(localStorage.getItem(ACTIVE_ROUTINE_KEY));
 let editingRoutineId = null;
 function saveRoutines(){ localStorage.setItem(ROUTINES_KEY, JSON.stringify(routines)); syncMeta.routinesUpdated=Date.now(); saveMeta(); scheduleSync(); }
 function getRoutine(id){ return routines.find(r=>r.id===id); }
@@ -1260,7 +1385,10 @@ function newRoutine(){
 function deleteRoutine(id){
   routines=routines.filter(r=>r.id!==id); saveRoutines();
   if(editingRoutineId===id) closeEditor();
-  if(activeRoutineId===id){ activeRoutineId=""; localStorage.setItem(ACTIVE_ROUTINE_KEY,""); }
+  if(activeRoutineIds.includes(id)){
+    activeRoutineIds=activeRoutineIds.filter(x=>x!==id);
+    localStorage.setItem(ACTIVE_ROUTINE_KEY, activeRoutineIds.join(","));
+  }
   renderRoutineList(); refreshRoutineSelect(); renderRoutinePlan(); toast("Routine deleted");
 }
 
@@ -1349,32 +1477,65 @@ function renderRoutinePicker(){
   }).join("") + (list.length>80?`<div class="empty" style="padding:12px">+${list.length-80} more — refine search</div>`:"");
 }
 
-// ---- Log tab: routine selector + plan checklist ----
+// ---- Log tab: routine multi-selector + plan checklist ----
+function activeRoutines(){ return activeRoutineIds.map(getRoutine).filter(Boolean); }
+function activeRoutinesLabel(){
+  const sel=activeRoutines();
+  if(sel.length===0) return "None";
+  if(sel.length===1) return sel[0].name||"Untitled";
+  return sel.length+" routines";
+}
 function refreshRoutineSelect(){
-  const sel=document.getElementById("routineSelect"); if(!sel) return;
-  sel.innerHTML='<option value="">None</option>'+routines.map(r=>
-    `<option value="${r.id}"${r.id===activeRoutineId?" selected":""}>${r.name||"Untitled"}</option>`).join("");
+  const btn=document.getElementById("routineSelectBtn");
+  const panel=document.getElementById("routineSelectPanel");
+  if(!btn||!panel) return;
+  btn.textContent=activeRoutinesLabel()+" ▾";
+  if(routines.length===0){ panel.innerHTML='<div class="rs-empty">No routines yet.</div>'; return; }
+  const set=new Set(activeRoutineIds);
+  panel.innerHTML=routines.map(r=>
+    `<label class="rs-opt"><input type="checkbox" ${set.has(r.id)?"checked":""}
+      onchange="toggleActiveRoutine('${r.id}',this.checked)"><span>${r.name||"Untitled"}</span></label>`).join("");
 }
-function selectRoutine(id){
-  activeRoutineId=id; localStorage.setItem(ACTIVE_ROUTINE_KEY,id||"");
+function toggleRoutineDropdown(e){
+  if(e) e.stopPropagation();
+  const panel=document.getElementById("routineSelectPanel");
+  if(panel) panel.classList.toggle("open");
+}
+function toggleActiveRoutine(id,on){
+  const set=new Set(activeRoutineIds);
+  if(on) set.add(id); else set.delete(id);
+  activeRoutineIds=routines.filter(r=>set.has(r.id)).map(r=>r.id);  // keep routine order
+  localStorage.setItem(ACTIVE_ROUTINE_KEY, activeRoutineIds.join(","));
   syncMeta.activeRoutineUpdated=Date.now(); saveMeta(); scheduleSync();
-  renderRoutinePlan();
+  refreshRoutineSelect(); renderRoutinePlan();
 }
+// close the dropdown when clicking outside it
+document.addEventListener("click",e=>{
+  const panel=document.getElementById("routineSelectPanel");
+  if(panel && panel.classList.contains("open") && !e.target.closest(".rs-wrap")) panel.classList.remove("open");
+});
 function renderRoutinePlan(){
   const host=document.getElementById("routinePlan"); if(!host) return;
-  const r=getRoutine(activeRoutineId);
-  if(!r){ host.innerHTML=""; return; }   // keep the card compact when nothing is selected
-  if(r.exercises.length===0){ host.innerHTML='<div class="muted" style="margin-top:8px">This routine has no exercises yet.</div>'; return; }
+  const sel=activeRoutines();
+  if(sel.length===0){ host.innerHTML=""; return; }   // keep the card compact when nothing is selected
   const today=todayStr();
   const doneSet=new Set(data.filter(d=>d.date===today).map(d=>d.exercise));
-  const doneCount=r.exercises.filter(n=>doneSet.has(n)).length;
-  let html=`<div class="plan-progress">${doneCount} of ${r.exercises.length} done</div>`;
-  html+=r.exercises.map(n=>{
-    const done=doneSet.has(n);
-    const idx=LIB.findIndex(x=>x.n===n);
-    const onclick = idx>=0 ? `onclick="chooseEx(${idx})"` : "";
-    return `<div class="plan-row ${done?'done':''}" ${onclick}>
-      <span class="chk">${done?"✓":""}</span><span class="pnm">${n}</span></div>`;
+  const allEx=[...new Set(sel.flatMap(r=>r.exercises))];
+  const doneCount=allEx.filter(n=>doneSet.has(n)).length;
+  let html=`<div class="plan-progress">${doneCount} of ${allEx.length} done</div>`;
+  html+=sel.map(r=>{
+    const gdone=r.exercises.filter(n=>doneSet.has(n)).length;
+    const hd=`<div class="plan-ghd">${r.name||"Untitled"}<span class="plan-gcount">${gdone}/${r.exercises.length}</span></div>`;
+    if(r.exercises.length===0)
+      return `<div class="plan-group">${hd}<div class="muted" style="font-size:12px;margin-top:6px">No exercises yet.</div></div>`;
+    const rows=r.exercises.map(n=>{
+      const done=doneSet.has(n);
+      const idx=LIB.findIndex(x=>x.n===n);
+      const onclick = idx>=0 ? `onclick="chooseEx(${idx})"` : "";
+      return `<div class="plan-row ${done?'done':''}" ${onclick}>
+        <span class="chk">${done?"✓":""}</span><span class="pnm">${n}</span></div>`;
+    }).join("");
+    return `<div class="plan-group">${hd}${rows}</div>`;
   }).join("");
   host.innerHTML=html;
 }
@@ -1465,7 +1626,7 @@ function switchTab(t){
     document.getElementById("btn-"+x).classList.toggle("active",x===t);
   });
   if(t==="history")renderHistory();
-  if(t==="progress"){ refreshProgOptions(); }
+  if(t==="progress"){ if(progView==='muscle') renderMuscleLoad(); else refreshProgOptions(); }
   if(t==="routines")renderRoutineList();
   if(t==="guide"){ renderGuidePicker(); if(guideChosen){ const i=LIB.findIndex(x=>x.n===guideChosen); if(i>=0) chooseGuide(i); } }
 }
@@ -1486,7 +1647,7 @@ function buildLocalDoc(){
     deletedLogIds:deletedLogIds,
     favorites:[...favs], favoritesUpdated:syncMeta.favoritesUpdated||0,
     routines:routines, routinesUpdated:syncMeta.routinesUpdated||0,
-    activeRoutine:activeRoutineId, activeRoutineUpdated:syncMeta.activeRoutineUpdated||0
+    activeRoutine:activeRoutineIds.join(","), activeRoutineUpdated:syncMeta.activeRoutineUpdated||0
   };
 }
 function normalizeDoc(d){
@@ -1534,7 +1695,7 @@ function canon(d){
 function applyDoc(doc){
   const d=normalizeDoc(doc);
   data=d.logs; deletedLogIds=d.deletedLogIds; favs=new Set(d.favorites);
-  routines=d.routines; activeRoutineId=d.activeRoutine;
+  routines=d.routines; activeRoutineIds=parseActiveIds(d.activeRoutine);
   syncMeta.favoritesUpdated=d.favoritesUpdated;
   syncMeta.routinesUpdated=d.routinesUpdated;
   syncMeta.activeRoutineUpdated=d.activeRoutineUpdated;
@@ -1542,7 +1703,7 @@ function applyDoc(doc){
   localStorage.setItem(DELETED_KEY, JSON.stringify(deletedLogIds));
   localStorage.setItem(FAV_KEY, JSON.stringify([...favs]));
   localStorage.setItem(ROUTINES_KEY, JSON.stringify(routines));
-  localStorage.setItem(ACTIVE_ROUTINE_KEY, activeRoutineId||"");
+  localStorage.setItem(ACTIVE_ROUTINE_KEY, activeRoutineIds.join(","));
   saveMeta();
   refreshAllViews();
 }
@@ -1552,7 +1713,7 @@ function refreshAllViews(){
   if(LIB.length) renderPicker();
   const vis=["history","progress","routines","guide"].find(t=>!document.getElementById("tab-"+t).classList.contains("hidden"));
   if(vis==="history") renderHistory();
-  else if(vis==="progress") refreshProgOptions();
+  else if(vis==="progress"){ if(progView==='muscle') renderMuscleLoad(); else refreshProgOptions(); }
   else if(vis==="routines") renderRoutineList();
   else if(vis==="guide") renderGuidePicker();
 }
