@@ -112,6 +112,10 @@
   .hset .he{cursor:pointer;color:var(--muted);font-size:13px;padding:0 3px}
   .hset .he:hover{color:var(--accent)}
   .hset .hd{cursor:pointer;color:var(--danger);font-size:16px;line-height:1;padding:0 3px}
+  .hset .hgear{cursor:pointer;color:var(--muted);font-size:14px;line-height:1;padding:0 3px;opacity:.7;transition:opacity .15s,color .15s}
+  .hset .hgear:hover{opacity:1;color:var(--accent)}
+  .hset .hgear.on{color:var(--accent);opacity:1}
+  .hset.open{outline:1px solid var(--accent);outline-offset:-1px}
   .hset input{width:52px;padding:4px 6px;font-size:13px;text-align:center}
   .hset .save{background:var(--accent2);color:#052e14;padding:5px 9px;font-size:12px;border-radius:12px}
   .empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px}
@@ -240,7 +244,6 @@
 <body>
 <header>
   <h1>💪 Fitness Tracker</h1>
-  <p>Log your lifts. Watch the numbers climb.</p>
   <button class="gear" onclick="openSettings()" title="Sync & backup" aria-label="Settings">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"/>
@@ -950,6 +953,7 @@ function renderSession(){
 
 // ================= History (editable) =================
 let editingIdx=null;    // global data index whose weight/reps is being edited
+let menuIdx=null;       // global data index whose edit/delete actions are open
 let editingDate=null;   // date string whose date is being edited
 let histCollapsed=null; // Set of collapsed session dates (null until first render)
 function toggleDay(dt){ if(histCollapsed.has(dt)) histCollapsed.delete(dt); else histCollapsed.add(dt); renderHistory(); }
@@ -1091,11 +1095,17 @@ function histSet(s){
       <button class="save" onclick="saveHistSet(${s.i})">Save</button>
       <span class="hd" onclick="cancelEdit()">×</span></span>`;
   }
+  if(s.i===menuIdx){
+    return `<span class="hset open">${setShort(s)}
+      <span class="he" onclick="editHistSet(${s.i})" title="Edit">✎</span>
+      <span class="hd" onclick="deleteEntry(${s.i})" title="Delete">×</span>
+      <span class="hgear on" onclick="toggleActions(${s.i})" title="Close">⚙</span></span>`;
+  }
   return `<span class="hset">${setShort(s)}
-    <span class="he" onclick="editHistSet(${s.i})">✎</span>
-    <span class="hd" onclick="deleteEntry(${s.i})">×</span></span>`;
+    <span class="hgear" onclick="toggleActions(${s.i})" title="Edit / delete">⚙</span></span>`;
 }
-function editHistSet(i){ editingIdx=i; renderHistory(); }
+function toggleActions(i){ menuIdx = (menuIdx===i ? null : i); editingIdx=null; renderHistory(); }
+function editHistSet(i){ menuIdx=null; editingIdx=i; renderHistory(); }
 function cancelEdit(){ editingIdx=null; renderHistory(); }
 function saveHistSet(i){
   const w0=document.getElementById("ew").value.trim();
@@ -1111,6 +1121,7 @@ function saveHistSet(i){
 function deleteEntry(i){
   tombstone(data[i]&&data[i].id);
   data.splice(i,1);
+  menuIdx=null;
   if(editingIdx===i) editingIdx=null;
   saveLog(data); renderHistory(); renderSession(); updateLoggedChip(); renderRoutinePlan(); toast("Deleted");
 }
